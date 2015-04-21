@@ -1,0 +1,72 @@
+
+
+upstream drkMttrWeb {
+   # server 10.132.63.59:8080;
+    server 10.132.63.59:8081;
+  }
+
+# Choose between www and non-www, listen on the *wrong* one and redirect to
+# the right one -- http://wiki.nginx.org/Pitfalls#Server_Name
+#
+server {
+  listen [::]:80;
+  listen 80;
+
+  # listen on both hosts
+  server_name drkmttr.co www.drkmttr.co;
+
+  # and redirect to the https host (declared below)
+  # avoiding http://www -> https://www -> https:// chain.
+  return 301 https://drkmttr.co$request_uri;
+}
+
+server {
+  listen [::]:443 ssl spdy;
+  listen 443 ssl spdy;
+
+  # listen on the wrong host
+  server_name www.drkmttr.co;
+
+  include h5bp/directive-only/ssl.conf;
+
+  # and redirect to the non-www host (declared below)
+  return 301 https://drkmttr.co$request_uri;
+}
+
+server {
+  listen [::]:443 ssl spdy;
+  listen 443 ssl spdy;
+
+  # The host name to respond to
+  server_name drkmttr.co;
+
+
+  include h5bp/directive-only/ssl.conf;
+
+  ssl_certificate /etc/nginx/.ssl/drkmttr.co/server.crt;
+  ssl_certificate_key /etc/nginx/.ssl/drkmttr.co/server.key;
+
+  # Path for static files
+  # root /var/www/example.com/public;
+  # root /var/www/example.com/public;
+
+   location / {
+       proxy_pass http://drkMttrWeb;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection 'upgrade';
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_cache_bypass $http_upgrade;
+   }
+
+
+  #Specify a charset
+  charset utf-8;
+
+  # Custom 404 page
+  error_page 404 /404.html;
+
+  # Include the basic h5bp config set
+  include h5bp/basic.conf;
+}
